@@ -1,4 +1,4 @@
-FROM localhost:5000/slew-villas
+FROM dpsimrwth/slew-villas
 RUN pip install pika
 COPY send_request.py receive.py /usr/bin/
 COPY example.json /var/
