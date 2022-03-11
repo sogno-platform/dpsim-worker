@@ -1,10 +1,12 @@
 {
   "model" : {
 	"type" : "url-list",
-	"url" : [	"https://git.rwth-aachen.de/acs/public/grid-data/cim-grid-data/-/raw/master/CIGRE_MV/NEPLAN/CIGRE_MV_no_tapchanger_With_LoadFlow_Results/Rootnet_FULL_NE_06J16h_DI.xml",
-				"https://git.rwth-aachen.de/acs/public/grid-data/cim-grid-data/-/raw/master/CIGRE_MV/NEPLAN/CIGRE_MV_no_tapchanger_With_LoadFlow_Results/Rootnet_FULL_NE_06J16h_EQ.xml",
-				"https://git.rwth-aachen.de/acs/public/grid-data/cim-grid-data/-/raw/master/CIGRE_MV/NEPLAN/CIGRE_MV_no_tapchanger_With_LoadFlow_Results/Rootnet_FULL_NE_06J16h_SV.xml",
-				"https://git.rwth-aachen.de/acs/public/grid-data/cim-grid-data/-/raw/master/CIGRE_MV/NEPLAN/CIGRE_MV_no_tapchanger_With_LoadFlow_Results/Rootnet_FULL_NE_06J16h_TP.xml"	]
+	"url" : [
+		"https://git.rwth-aachen.de/acs/public/grid-data/cim-grid-data/-/raw/master/CIGRE_MV/NEPLAN/CIGRE_MV_no_tapchanger_With_LoadFlow_Results/Rootnet_FULL_NE_06J16h_DI.xml?inline=false",
+		"https://git.rwth-aachen.de/acs/public/grid-data/cim-grid-data/-/raw/master/CIGRE_MV/NEPLAN/CIGRE_MV_no_tapchanger_With_LoadFlow_Results/Rootnet_FULL_NE_06J16h_EQ.xml?inline=false",
+		"https://git.rwth-aachen.de/acs/public/grid-data/cim-grid-data/-/raw/master/CIGRE_MV/NEPLAN/CIGRE_MV_no_tapchanger_With_LoadFlow_Results/Rootnet_FULL_NE_06J16h_SV.xml?inline=false",
+		"https://git.rwth-aachen.de/acs/public/grid-data/cim-grid-data/-/raw/master/CIGRE_MV/NEPLAN/CIGRE_MV_no_tapchanger_With_LoadFlow_Results/Rootnet_FULL_NE_06J16h_TP.xml?inline=false"
+		]
 	},
   "parameters": {
 	"executable": "SLEW_Shmem_CIGRE_MV_PowerFlow",
