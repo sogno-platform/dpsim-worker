@@ -8,6 +8,7 @@ import villas.dataprocessing.validationtools as validationtools
 import dpsimpy
 import zipfile
 import logging
+import base64
 
 def download_grid_data(name, url):
     with open(name, 'wb') as out_file:
@@ -19,11 +20,13 @@ def download_grid_data(name, url):
 #
 # files - the names of the files containing the model
 #
-def run_dpsim(files):
+def run_dpsim(dpsim_config):
+    files            = dpsim_config["files"]
     logging.info("Starting dpsim with model files: %s", str(files))
-    name = 'CIGRE_MV'
-    reader = dpsimpy.CIMReader(name)
-    system = reader.loadCIM(50, files, dpsimpy.Domain.SP, dpsimpy.PhaseType.Single, dpsimpy.GeneratorType.PVNode)
+    results_file_id  = dpsim_config["results_file_id"]
+    name             = 'CIGRE_MV'
+    reader           = dpsimpy.CIMReader(name)
+    system           = reader.loadCIM(50, files, dpsimpy.Domain.SP, dpsimpy.PhaseType.Single, dpsimpy.GeneratorType.PVNode)
     system
 
     sim = dpsimpy.Simulation(name)
@@ -40,10 +43,23 @@ def run_dpsim(files):
     path = 'logs/'
     logName = 'CIGRE_MV'
     dpsim_result_file = path + logName + '.csv'
-    ts_dpsim = read_timeseries_csv(dpsim_result_file)
-
-    for ts,values in ts_dpsim.items():
-        values.name = values.name[:-2]
+    with open(dpsim_result_file, 'rb') as f:
+        result_bytes = f.read().decode('utf-8').encode('ascii')
+        base64_bytes = base64.b64encode(result_bytes)
+        base64_ascii = base64_bytes.decode('ascii')
+        r = requests.put("http://sogno-file-service:8080/api/files/"+results_file_id, files={'file': '{"ready":"true", "content":"' + base64_ascii + '"}'})
+    try:
+        string_content = r.content.decode('utf8')
+    except UnicodeDecodeError:
+        logging.error("Failed to decode data as utf8 bytes %s", r.content)
+        return
+    try:
+        json_content = json.loads(string_content)
+        file_id      = json_content["data"]["fileID"]
+    except JSONDecodeError:
+        logging.error("Failed to decode data as json %s", string_content)
+        return
+    logging.info('Uploaded results to fileID: %s', file_id)
 
 def get_url_list(model):
     type = model.get('type', 'url')
@@ -115,10 +131,15 @@ def callback(ch, method, properties, body):
     except Exception as e:
         logging.info("Error parsing message, invalid json: " + str(e))
 
+    dpsim_config = {}
+
     if data != None and data['model'] != None:
         download_model(data['model'], '/etc/config/model')
-        files = unzip_files('/etc/config/model/')
-    run_dpsim(files)
+        dpsim_config["files"] = unzip_files('/etc/config/model/')
+        dpsim_config["results_file_id"] = data["parameters"]["results_file"]
+        logging.info("The status will be upated in file with id: %s", dpsim_config["results_file_id"])
+
+    run_dpsim(dpsim_config)
 
 def configure_logging():
     print("Configuring logging")
@@ -133,8 +154,9 @@ def configure_logging():
         format='[%(asctime)s.%(msecs)d %(name)s %(levelname)s] %(message)s',
         datefmt='%H:%M:%S')
 
-    # by default pika sends lots of debug messages to the logging system
+    # by default these libraries send lots of debug messages to the logging system
     logging.getLogger("pika").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 def open_rabbitmq_connection():
     logging.info("Opening rabbitmq connection")

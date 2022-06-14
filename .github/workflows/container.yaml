@@ -10,6 +10,15 @@ jobs:
   create-docker-container:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate tag name
+        run: |
+            if [[ "${{ github.repository_owner }}" != "sogno-platform" ]];
+            then
+                echo "TAG_NAME=sogno/dpsim:worker-${{ github.repository_owner }}" >> $GITHUB_ENV
+            else
+                echo "TAG_NAME=sogno/dpsim:worker" >> $GITHUB_ENV
+            fi
+
       - name: Checkout
         uses: actions/checkout@v2
 
@@ -26,4 +35,4 @@ jobs:
          context: image
          file: image/Dockerfile
          push: true
-         tags: sogno/dpsim:worker
+         tags: "${{ env.TAG_NAME }}"
