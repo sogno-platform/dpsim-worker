@@ -5,7 +5,7 @@ import pika, sys, os, json
 from villas.dataprocessing.readtools import *
 from villas.dataprocessing.timeseries import *
 import villas.dataprocessing.validationtools as validationtools
-import dpsimpy
+import dpsimpy, dpsimpyvillas
 import zipfile
 import logging
 import base64
@@ -29,16 +29,61 @@ def run_dpsim(dpsim_config):
     system           = reader.loadCIM(50, files, dpsimpy.Domain.SP, dpsimpy.PhaseType.Single, dpsimpy.GeneratorType.PVNode)
     system
 
-    sim = dpsimpy.Simulation(name)
+    sim = dpsimpy.RealTimeSimulation(name)
     sim.set_system(system)
-    sim.set_domain(dpsimpy.Domain.SP)
-    sim.set_solver(dpsimpy.Solver.NRP)
 
+    logging.info("Requested simulation config: %s", dpsim_config)
+
+    # TODO: Add CSV reading
+    #csvreader = dpsimpy.CSVReader(name, csv_files, assignList, dpsimpy.LogLevel.info)
+    #csvreader.assignLoadProfile(system, 0, 1, 300, dpsimpy.CSVReaderMode.MANUAL, dpsimpy.CSVReaderFormat.SECONDS)
+
+    # instantiate logger
     logger = dpsimpy.Logger(name)
-    for node in system.nodes:
-        logger.log_attribute(node.name()+'.V', 'v', node)
+
+    # setup VILLASnode
+    intf_mqtt = dpsimpyvillas.InterfaceVillas(name='MQTT', config='''{
+        "type": "mqtt",
+        "host": "mosquitto",
+        "in": {
+            "subscribe": "mqtt-dpsim"
+        },
+        "out": {
+            "publish": "dpsim-mqtt"
+        }
+    }''')
+
+    # setup simulation
+    if hasattr(dpsimpy.Domain, dpsim_config['domain']):
+        domain = getattr(dpsimpy.Domain, dpsim_config['domain'])
+        sim.set_domain(domain)
+    if hasattr(dpsimpy.Solver, dpsim_config['solver']):
+        solver = getattr(dpsimpy.Solver, dpsim_config['solver'])
+        sim.set_solver(solver)
+    sim.set_time_step(dpsim_config['timestep'])
+    sim.set_final_time(dpsim_config['finaltime'])
     sim.add_logger(logger)
-    sim.run()
+    sim.add_interface(intf_mqtt, False)
+
+    # setup exports
+    for i in range(15):
+        objname = 'N'+str(i)
+        sim.export_attribute(sim \
+            .get_idobj_attr(objname, 'v') \
+            .derive_coeff(0,0) \
+            .derive_mag(), 2*i)
+        sim.export_attribute(sim \
+            .get_idobj_attr(objname, 'v') \
+            .derive_coeff(0,0) \
+            .derive_phase(), 2*i+1)
+
+    # log exports
+    for node in system.nodes:
+        sim.log_idobj_attribute(node.name(), 'v')
+
+    sim.run(1)
+
+    logging.info("Simulation complete, uploading results")
 
     path = 'logs/'
     logName = 'CIGRE_MV'
@@ -53,12 +98,14 @@ def run_dpsim(dpsim_config):
     except UnicodeDecodeError:
         logging.error("Failed to decode data as utf8 bytes %s", r.content)
         return
+
     try:
         json_content = json.loads(string_content)
         file_id      = json_content["data"]["fileID"]
     except JSONDecodeError:
         logging.error("Failed to decode data as json %s", string_content)
         return
+
     logging.info('Uploaded results to fileID: %s', file_id)
 
 def get_url_list(model):
@@ -135,8 +182,13 @@ def callback(ch, method, properties, body):
 
     if data != None and data['model'] != None:
         download_model(data['model'], '/etc/config/model')
+        logging.info("PARAMETERS: %s", data["parameters"])
         dpsim_config["files"] = unzip_files('/etc/config/model/')
         dpsim_config["results_file_id"] = data["parameters"]["results_file"]
+        dpsim_config["domain"] = data["parameters"]["domain"]
+        dpsim_config["solver"] = data["parameters"]["solver"]
+        dpsim_config["timestep"] = data["parameters"]["timestep"]
+        dpsim_config["finaltime"] = data["parameters"]["finaltime"]
         logging.info("The status will be upated in file with id: %s", dpsim_config["results_file_id"])
 
     run_dpsim(dpsim_config)
