@@ -20,6 +20,7 @@ RUN pip install pika
 COPY send_request.py receive.py /usr/bin/
 RUN useradd user
 RUN mkdir -p /etc/config/model
+RUN mkdir -p /etc/config/loadprofile
 RUN chown -R user /etc/config
 RUN mkdir -p /run
 RUN chown user /run
