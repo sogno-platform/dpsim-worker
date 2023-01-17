@@ -19,6 +19,7 @@ def run_dpsim(dpsim_config):
     logging.info("Requested simulation config: %s", dpsim_config)
 
     model_files      = dpsim_config["model_files"]
+    load_profiles    = dpsim_config["load_profile_files"]
     results_file_id  = dpsim_config["results_file_id"]
     name             = 'CIGRE_MV'
     reader           = dpsimpy.CIMReader(name)
@@ -26,7 +27,7 @@ def run_dpsim(dpsim_config):
                                       dpsimpy.PhaseType.Single, dpsimpy.GeneratorType.PVNode)
     system
     logging.info("Starting dpsim with model files: %s", str(model_files))
-    logging.info("Starting dpsim with load profile files: %s", str(model_files))
+    logging.info("Starting dpsim with load profile files: %s", str(load_profiles))
 
     sim = dpsimpy.RealTimeSimulation(name)
     sim.set_system(system)
@@ -62,18 +63,6 @@ def run_dpsim(dpsim_config):
     # instantiate logger
     logger = dpsimpy.Logger(name)
 
-    # setup VILLASnode
-    intf_mqtt = dpsimpyvillas.InterfaceVillas(name='MQTT', config='''{
-        "type": "mqtt",
-        "host": "mosquitto",
-        "in": {
-            "subscribe": "mqtt-dpsim"
-        },
-        "out": {
-            "publish": "dpsim-mqtt"
-        }
-    }''')
-
     # setup simulation
     if hasattr(dpsimpy.Domain, dpsim_config['domain']):
         domain = getattr(dpsimpy.Domain, dpsim_config['domain'])
@@ -84,7 +73,20 @@ def run_dpsim(dpsim_config):
     sim.set_time_step(dpsim_config['timestep'])
     sim.set_final_time(dpsim_config['finaltime'])
     sim.add_logger(logger)
-    sim.add_interface(intf_mqtt, False)
+
+    if "villas_interface" in dpsim_config:
+        # setup VILLASnode
+        intf_mqtt = dpsimpyvillas.InterfaceVillas(name='MQTT', config='''{
+            "type": "mqtt",
+            "host": "mosquitto",
+            "in": {
+                "subscribe": "mqtt-dpsim"
+            },
+            "out": {
+                "publish": "dpsim-mqtt"
+            }
+        }''')
+        sim.add_interface(intf_mqtt, False)
 
     # setup exports
     for i in range(15):
