@@ -88,17 +88,17 @@ def run_dpsim(dpsim_config):
         }''')
         sim.add_interface(intf_mqtt, False)
 
-    # setup exports
-    for i in range(15):
-        objname = 'N'+str(i)
-        sim.export_attribute(sim \
-            .get_idobj_attr(objname, 'v') \
-            .derive_coeff(0,0) \
-            .derive_mag(), 2*i)
-        sim.export_attribute(sim \
-            .get_idobj_attr(objname, 'v') \
-            .derive_coeff(0,0) \
-            .derive_phase(), 2*i+1)
+        # setup exports
+        for i in range(15):
+            objname = 'N'+str(i)
+            sim.export_attribute(sim \
+                .get_idobj_attr(objname, 'v') \
+                .derive_coeff(0,0) \
+                .derive_mag(), 2*i)
+            sim.export_attribute(sim \
+                .get_idobj_attr(objname, 'v') \
+                .derive_coeff(0,0) \
+                .derive_phase(), 2*i+1)
 
     # log exports
     for node in system.nodes:
